@@ -12,7 +12,7 @@ provider "aws" {
 #####
 
 data "template_file" "policy_json" {
-  template = "${file("${path.module}/template/policy.json.tpl")}"
+  template = file("${path.module}/template/policy.json.tpl")
   vars = {}
 }
 
@@ -45,7 +45,7 @@ EOF
 
 resource "aws_iam_policy_attachment" "lambda-attach" {
   name       = "${var.lambda_name}-tagging-lambda-attachment"
-  roles      = ["${aws_iam_role.iam_role.name}"]
+  roles      = [aws_iam_role.iam_role.name]
   policy_arn = aws_iam_policy.iam_role_policy.arn
 }
 
@@ -54,23 +54,16 @@ resource "aws_iam_policy_attachment" "lambda-attach" {
 #####
 
 # Generate ZIP archive with Lambda
-
-data "template_file" "lambda" {
-    template = "${file("${path.module}/template/tagging_lambda.py.tpl")}"
-    
-    vars = {
+resource "local_file" "lambda_code" {
+  filename = "${path.module}/template/tagging_lambda.py"
+  content  = templatefile("${path.module}/template/tagging_lambda.py.tpl",
+  {
       aws_region = var.aws_region
       name = var.lambda_name
       search_tag_key = var.search_tag_key
       search_tag_value = var.search_tag_value
-      tags = "${jsonencode(var.tags)}"
-      timestamp = "${timestamp()}"
-    }
-}
-
-resource "local_file" "lambda_code" {
-  content  = data.template_file.lambda.rendered
-  filename = "${path.module}/template/tagging_lambda.py"
+      tags = jsonencode(var.tags)
+  }) 
 }
 
 data "archive_file" "lambda_code" {
@@ -85,10 +78,8 @@ data "archive_file" "lambda_code" {
 
 
 # Create lambda
-
 resource "aws_lambda_function" "tagging" {
   depends_on       = [aws_iam_role.iam_role, data.archive_file.lambda_code]
-
   filename         = "${path.module}/template/tagging_lambda.zip"
   function_name    = "${var.lambda_name}-tagging-lambda"
   role             = aws_iam_role.iam_role.arn
@@ -99,6 +90,12 @@ resource "aws_lambda_function" "tagging" {
   memory_size      = "128"
 
   tags = var.tags
+  lifecycle {
+    ignore_changes = [
+      filename,
+      last_modified,
+    ]
+  }
 }
 
 resource "aws_cloudwatch_event_rule" "tagging" {

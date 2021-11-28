@@ -12,16 +12,16 @@ log_handler.setFormatter(log_formatter)
 LOGGER.addHandler(log_handler)
 
 # Tagging configuration generated
-region = "${aws_region}"
-setTags = ${tags}
+region = "eu-central-1"
+setTags = {"Environment":"test","Owner":"ContainerPlatform","Project":"ContainerPlatform","Stage":"test","map-migrated":"d-server-01i6db50fw5d43"}
 
 if 'Name' not in setTags.keys():
-    setTags['Name'] = "${name}-resource"
+    setTags['Name'] = "test-01-test-eu-central-1-resource"
 
 # Tag the resources ...
 def lambda_handler(event, context):
-    searchTagKey = '${search_tag_key}'
-    searchTagValue = '${search_tag_value}'
+    searchTagKey = 'eks:cluster-name'
+    searchTagValue = 'test-01'
     filter = [{'Name':'tag:' + searchTagKey, 'Values':[searchTagValue]}]
 
     ec2 = boto3.resource('ec2', region_name=region)
